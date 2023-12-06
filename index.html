@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multiplication Table Generator</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <link rel="stylesheet" href="style.css">
+  <!-- jQuery and jQuery Validation plugin -->
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="https://cdn.jsdelivr.net/jquery.validation/1.16.0/jquery.validate.min.js"></script>
+</head>
+
+<body>
+  <div class="container-fluid">
+    <!-- Contains Input Values -->
+    <h1 class="text-center my-4">Please enter the table ranges</h1>
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <form id="table-form" action="/table-ranges" method="post">
+          <div class="form-group">
+            <label for="start-horizontal">Minimum Column Value</label>
+            <div id="start-horizontal-slider"></div>
+            <span id="start-horizontal-value">0</span>
+          </div>
+          <div class="form-group">
+            <label for="end-horizontal">Maximum Column Value</label>
+            <div id="end-horizontal-slider"></div>
+            <span id="end-horizontal-value">0</span>
+          </div>
+          <div class="form-group">
+            <label for="start-vertical">Minimum Row Value</label>
+            <div id="start-vertical-slider"></div>
+            <span id="start-vertical-value">0</span>
+          </div>
+          <div class="form-group">
+            <label for="end-vertical">Maximum Row Value</label>
+            <div id="end-vertical-slider"></div>
+            <span id="end-vertical-value">0</span>
+          </div>
+          <!-- Display Error Message -->
+          <p id="error-message" class="text-danger"></p>
+          <button type="submit" class="btn btn-primary btn-block">Regenerate Table</button>
+        </form>
+      </div>
+    </div>
+    <!-- Generated Table -->
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-10">
+        <!-- Tabs Structure -->
+        <div id="tabs">
+          <ul></ul>
+          <div id="generated-tables"></div>
+        </div>
+      </div>
+      <!-- Delete Tabs -->
+      <button id="delete-selected-tabs" class="btn btn-danger mt-3">Delete Selected Tabs</button>
+      <button id="delete-all-tabs" class="btn btn-danger mt-3 ml-2">Delete All Tabs</button>
+    
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function () {
+      // Initializes sliders
+      $("#start-horizontal-slider").slider({
+        range: "min", min: -50, max: 50,
+        slide: function (event, ui) {
+          $("#start-horizontal-value").text(ui.value);
+          generateTable();
+        }
+      });
+
+      $("#end-horizontal-slider").slider({
+        range: "min", min: -50, max: 50,
+        slide: function (event, ui) {
+          $("#end-horizontal-value").text(ui.value);
+          generateTable();
+        }
+      });
+
+      $("#start-vertical-slider").slider({
+        range: "min", min: -50, max: 50,
+        slide: function (event, ui) {
+          $("#start-vertical-value").text(ui.value);
+          generateTable();
+        }
+      });
+      $("#end-vertical-slider").slider({
+        range: "min", min: -50, max: 50,
+        slide: function (event, ui) {
+          $("#end-vertical-value").text(ui.value);
+          generateTable();
+        }
+      });
+
+      // Display the initial values
+      updateSliderValues();
+
+      // Initialize tabs
+      $("#tabs").tabs();
+
+      // Delete selected tabs
+      $("#delete-selected-tabs").on("click", function () {
+        const selectedTabs = $("#tabs ul .ui-state-active");
+        selectedTabs.each(function () {
+          const tabId = $(this).find("a").attr("href");
+          $(tabId).remove();
+          $(this).remove();
+        });
+        $("#tabs").tabs("refresh");
+      });
+
+      // Delete all tabs
+      $("#delete-all-tabs").on("click", function () {
+        $("#tabs ul li").each(function () {
+          const tabId = $(this).find("a").attr("href");
+          $(tabId).remove();
+          $(this).remove();
+        });
+        $("#tabs").tabs("refresh");
+      });
+
+      // Add validation rules and messages
+      $("#table-form").validate({
+        rules: {
+          "min-column-value": { required: true, range: [-50, 50] },
+          "max-column-value": { required: true, range: [-50, 50] },
+          "min-row-value": { required: true, range: [-50, 50] },
+          "max-row-value": { required: true, range: [-50, 50] }
+        },
+        messages: {
+          "min-column-value": { required: "Please enter a value", range: "Value must be between -50 and 50" },
+          "max-column-value": { required: "Please enter a value", range: "Value must be between -50 and 50" },
+          "min-row-value": { required: "Please enter a value", range: "Value must be between -50 and 50" },
+          "max-row-value": { required: "Please enter a value", range: "Value must be between -50 and 50" }
+        },
+        submitHandler: function () {
+          // Additional custom validation
+          var minColumnValue = parseInt($("#start-horizontal-slider").slider("value"));
+          var maxColumnValue = parseInt($("#end-horizontal-slider").slider("value"));
+          var minRowValue = parseInt($("#start-vertical-slider").slider("value"));
+          var maxRowValue = parseInt($("#end-vertical-slider").slider("value"));
+
+          if (minColumnValue >= maxColumnValue || minRowValue >= maxRowValue) {
+            // Display error message
+            $("#error-message").text("Minimum values must be less than maximum values.");
+            $("#generated-table-body").empty(); // Clear the table
+          } else {
+            // Form is valid, generate the table
+            generateTable();
+          }
+        }
+      });
+
+      function updateSliderValues() {
+        $("#start-horizontal-value").text($("#start-horizontal-slider").slider("value"));
+        $("#end-horizontal-value").text($("#end-horizontal-slider").slider("value"));
+        $("#start-vertical-value").text($("#start-vertical-slider").slider("value"));
+        $("#end-vertical-value").text($("#end-vertical-slider").slider("value"));
+      }
+
+      function generateTable() {
+        // Initialize the Values
+        const minColumnValue = $("#start-horizontal-slider").slider("value");
+        const maxColumnValue = $("#end-horizontal-slider").slider("value");
+        const minRowValue = $("#start-vertical-slider").slider("value");
+        const maxRowValue = $("#end-vertical-slider").slider("value");
+
+        // Generate Table
+        const table = generateMultiplicationTable(minColumnValue, minRowValue, maxColumnValue, maxRowValue);
+        
+        // Get the label for the tab
+        const tabLabel = `Min Col: ${minColumnValue}, Max Col: ${maxColumnValue}, Min Row: ${minRowValue}, Max Row: ${maxRowValue}`;
+        
+        // Create a unique tab ID
+        const tabId = `tab-${minColumnValue}-${maxColumnValue}-${minRowValue}-${maxRowValue}`;
+
+        // Append the table to the corresponding tab
+        $(`#${tabId} tbody`).html(table.tBody);
+
+        // Check if the tab already exists
+        if ($(`#${tabId}`).length === 0) {
+          // Add a new tab
+          $("#tabs ul").append(`<li><a href="#${tabId}">${tabLabel}</a></li>`);
+          $("#tabs").append(`<div id="${tabId}"><table class="table table-bordered table-striped"><thead></thead><tbody></tbody></table></div>`);
+
+          // Activate the new tab
+          $("#tabs").tabs("refresh");
+          $("#tabs").tabs("option", "active", -1);
+        }
+      }
+
+      function generateMultiplicationTable(minColumn, minRow, maxColumn, maxRow) {
+        // Initialize table
+        const table = document.createElement("table");
+        const tBody = document.createElement("tbody");
+        const headerRow = document.createElement("tr");
+        
+        // Init top left corner of the table
+        headerRow.innerHTML = "<th></th>";
+        
+        // Create headers
+        for (let col = minColumn; col <= maxColumn; col++) {
+          const th = document.createElement("th");
+          th.textContent = col;
+          headerRow.appendChild(th);
+        }
+        tBody.appendChild(headerRow);
+
+        // Fills in the Numbers
+        for (let row = minRow; row <= maxRow; row++) {
+          const tr = document.createElement("tr");
+          const th = document.createElement("th");
+          th.textContent = row;
+          tr.appendChild(th);
+          
+          for (let col = minColumn; col <= maxColumn; col++) {
+            const td = document.createElement("td");
+            const result = row * col;
+            td.textContent = result;
+            tr.appendChild(td);
+          }
+          tBody.appendChild(tr);
+        }
+        table.appendChild(tBody);
+        
+        // Return Data
+        return { tBody };
+      }
+    });
+  </script>
+</body>
+
+</html>
